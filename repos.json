@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "name": "Tater Modules",
+  "portals": [],
   "entry_base": "https://raw.githubusercontent.com",
   "verba_repos": [
     {

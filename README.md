@@ -8,7 +8,8 @@ see, install, and update every item from all source repos.
   and the `cores` index (Tater's verba store reads `verbas`, the core store reads `cores`,
   each ignoring the other — so this single URL serves both UIs).
 - `repos.json` — hand-edited config, the only source of truth for which source repos are
-  merged. One entry per source repo.
+  merged. One entry per source repo. The optional top-level `portals` list (default `[]`)
+  is copied verbatim into the generated manifest.
 - `build_manifest.py` — the merge/verify script (pure stdlib Python 3).
 
 This repo never contains .py files. Each manifest item's `entry` is an absolute raw URL

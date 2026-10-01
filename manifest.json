@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "name": "Tater Modules",
+  "portals": [],
   "verbas": [
     {
       "id": "on_demand_briefing",

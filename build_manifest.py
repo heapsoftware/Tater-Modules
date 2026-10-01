@@ -11,7 +11,9 @@ Pure standard library (urllib), no dependencies. Implements the build requiremen
     a summary table with --check-only). The single output file carries BOTH
     a `verbas` and a `cores` key: Tater's verba store reads `verbas`, the
     core store reads `cores`, each ignoring the other — so one manifest URL
-    can be pasted into both the Verbas and Cores custom-repo UIs.
+    can be pasted into both the Verbas and Cores custom-repo UIs. It also
+    carries the `portals` list from repos.json verbatim (a placeholder:
+    empty until the config fills it in).
 
 Usage:
     python3 build_manifest.py [--check-only] [--entry-base OVERRIDE] [--no-verify-entries]
@@ -83,6 +85,8 @@ def load_repos(path):
         raise BuildError("repos.json: top level must be a JSON object with \"schema\": 1")
     if not isinstance(cfg.get("entry_base"), str) or not cfg["entry_base"].strip():
         raise BuildError("repos.json: \"entry_base\" must be a non-empty string")
+    if "portals" in cfg and not isinstance(cfg["portals"], list):
+        raise BuildError("repos.json: \"portals\" must be a list")
     for key in ("verba_repos", "core_repos"):
         repos = cfg.get(key, [])
         if not isinstance(repos, list):
@@ -267,8 +271,8 @@ def diff_summary(out_path, new_doc):
     except (OSError, json.JSONDecodeError):
         return [f"{name}: previous file unreadable; full rewrite"]
     lines = []
-    header = {k: v for k, v in old.items() if not isinstance(v, list)}
-    new_header = {k: v for k, v in new_doc.items() if not isinstance(v, list)}
+    header = {k: v for k, v in old.items() if k not in ("verbas", "cores")}
+    new_header = {k: v for k, v in new_doc.items() if k not in ("verbas", "cores")}
     if header != new_header:
         lines.append(
             "  header changed: "
@@ -377,7 +381,11 @@ def main(argv=None):
         print("\nManifest was NOT written (build in memory, write only on success).")
         return 1
 
-    doc = {"schema": SCHEMA, "name": cfg.get("name") or "Tater Master Repo"}
+    doc = {
+        "schema": SCHEMA,
+        "name": cfg.get("name") or "Tater Master Repo",
+        "portals": cfg.get("portals") or [],
+    }
     for kind, _key in KINDS:
         doc[kind] = by_kind.get(kind, [])
     out_path = os.path.join(SCRIPT_DIR, OUT_NAME)
