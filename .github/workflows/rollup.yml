@@ -1,11 +1,14 @@
 name: rollup
 
 # Keeps the master manifest(s) in sync with the source repos automatically.
+# - push (main): every push (e.g. a repos.json change) rolls up right away
 # - schedule: every 30 min (covers the ~5 min raw-CDN lag after source pushes)
 # - workflow_dispatch: run on demand from the Actions tab
 # - repository_dispatch: fired by the optional per-source-repo dispatcher
 #   (see README, "Auto rollup" section)
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
