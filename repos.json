@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "name": "Tater Modules",
+  "entry_base": "https://raw.githubusercontent.com",
+  "verba_repos": [
+    {
+      "owner": "heapsoftware",
+      "repo": "Tater-On-Demand-Briefing",
+      "branch": "main",
+      "manifest": "manifest.json"
+    }
+  ],
+  "core_repos": [
+    {
+      "owner": "heapsoftware",
+      "repo": "Tater-Personal-Music-Core",
+      "branch": "main",
+      "manifest": "core_manifest.json"
+    },
+    {
+      "owner": "heapsoftware",
+      "repo": "Tater-Jarvis-Screen",
+      "branch": "main",
+      "manifest": "core_manifest.json"
+    }
+  ]
+}
