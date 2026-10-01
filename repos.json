@@ -9,6 +9,12 @@
       "repo": "Tater-On-Demand-Briefing",
       "branch": "main",
       "manifest": "manifest.json"
+    },
+    {
+      "owner": "heapsoftware",
+      "repo": "Tater-HA-Lists",
+      "branch": "main",
+      "manifest": "manifest.json"
     }
   ],
   "core_repos": [
