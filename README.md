@@ -4,9 +4,9 @@ A single "master" Tater shop **index** repo. Instead of adding one custom-reposi
 manifest URL to Tater per verba/core repo, you add **one** URL (this repo) and Tater can
 see, install, and update every item from all source repos.
 
-- `manifest.json` — verba index. **GENERATED — do not hand-edit.**
-- `core_manifest.json` — core index. **GENERATED — do not hand-edit.** (Omitted while there
-  are no core repos.)
+- `manifest.json` — **GENERATED — do not hand-edit.** One file carrying both the `verbas`
+  and the `cores` index (Tater's verba store reads `verbas`, the core store reads `cores`,
+  each ignoring the other — so this single URL serves both UIs).
 - `repos.json` — hand-edited config, the only source of truth for which source repos are
   merged. One entry per source repo.
 - `build_manifest.py` — the merge/verify script (pure stdlib Python 3).
@@ -14,14 +14,15 @@ see, install, and update every item from all source repos.
 This repo never contains .py files. Each manifest item's `entry` is an absolute raw URL
 pointing at the file in its own source repo; Tater downloads straight from there.
 
-## The URLs to paste into Tater
+## The URL to paste into Tater
 
-Add these under the Verbas / Cores page → *Custom repositories* (Name optional, Manifest
-URL required) in the Tater UI:
+**One URL, pasted twice.** In the Tater UI, add it under *Custom repositories* (Name
+optional, Manifest URL required) on **both** the Verbas page and the Cores page:
 
-- Verbas: `https://raw.githubusercontent.com/heapsoftware/Tater-Modules/main/manifest.json`
-- Cores: `https://raw.githubusercontent.com/heapsoftware/Tater-Modules/main/core_manifest.json`
-  (only once core repos exist)
+`https://raw.githubusercontent.com/heapsoftware/Tater-Modules/main/manifest.json`
+
+It works in both spots because the file contains both a `verbas` and a `cores` list —
+each store reads only its own key and ignores the other.
 
 After adding the master URL, **remove the individual per-repo manifest URLs** you
 previously added — they load first and would shadow the master's copies on shared ids.
@@ -47,36 +48,24 @@ ever need to intervene.)
 
 ## Adding a new source repo (when you release a new one)
 
-**On GitHub — nothing to set up, as long as the repo follows the per-repo convention**
-(the same one your existing repos already follow):
+**Full walkthrough: [`docs/adding-a-source-repo.md`](docs/adding-a-source-repo.md)** —
+big picture, manifest templates, field-by-field reference, the release procedure, how to
+read every build check, Tater-side steps, troubleshooting, and a per-release checklist.
+It is self-contained; no other context needed.
 
-1. Schema-1 manifest at the repo root: `manifest.json` with a `verbas` array for verba
-   repos, `core_manifest.json` with a `cores` array for core repos.
-2. Every item carries `id` (stable, unique — never reuse an id and never collide with an
-   official Tater_Shop id), `name`, `version`, relative `entry` (path to the .py from the
-   repo root), and the `sha256` of that exact file.
-3. Normal release process per repo: bump the class `version` *and* the manifest `version`
-   to the same value, recompute `sha256sum`, commit/tag/push.
-4. The repo is public (or the master repo must have read access via a deploy key).
-   Default branch should be `main` (or put the real branch in the config below).
+The short version:
 
-**In this repo — one entry in `repos.json`:**
-
-```json
-{
-  "owner": "heapsoftware",
-  "repo": "Tater-<New-Thing>",
-  "branch": "main",
-  "manifest": "manifest.json"
-}
-```
-
-into `verba_repos` (or `core_repos` for cores). Then:
-
-- `python3 build_manifest.py --check-only` — all checks pass for the new repo.
-- Full build, review the diff (should be only *added* items), commit, push (or let the
-  auto rollup pick it up — it only needs the `repos.json` change pushed).
-- First core ever added? Also paste the cores URL into Tater's Cores page (§URLs above).
+1. **GitHub side:** the source repo just follows the per-repo convention — public,
+   schema-1 manifest at the root (`manifest.json`/`verbas` or
+   `core_manifest.json`/`cores`), each item with a stable unique `id`, `version` equal
+   to the .py class attribute, relative `entry`, and the file's `sha256`. No other
+   GitHub setup of any kind.
+2. **This repo:** one entry in `verba_repos` / `core_repos` of `repos.json`.
+3. `python3 build_manifest.py --check-only` → full build → review the `git diff`
+   (only the new item) → commit + push. Or push just `repos.json` and let the auto
+   rollup generate the manifest within 30 min.
+4. **Tater side:** nothing for verbas; first core ever → paste the master URL on the
+   Cores page too.
 
 **Removing a source repo:** delete its entry from `repos.json`, rebuild (its items drop
 from the master), push. Copies already installed on Tater devices stay installed.

@@ -7,8 +7,11 @@ Pure standard library (urllib), no dependencies. Implements the build requiremen
   - rewrites every item's `entry` to an absolute URL under entry_base,
   - runs checks A-F (duplicate ids, official-shop id collision, version
     format, sha256 shape, entry integrity, version drift),
-  - writes manifest.json / core_manifest.json exactly once, only if every
-    check passed (or prints a summary table with --check-only).
+  - writes manifest.json exactly once, only if every check passed (or prints
+    a summary table with --check-only). The single output file carries BOTH
+    a `verbas` and a `cores` key: Tater's verba store reads `verbas`, the
+    core store reads `cores`, each ignoring the other — so one manifest URL
+    can be pasted into both the Verbas and Cores custom-repo UIs.
 
 Usage:
     python3 build_manifest.py [--check-only] [--entry-base OVERRIDE] [--no-verify-entries]
@@ -43,11 +46,13 @@ CLASS_VERSION_RE = re.compile(
     r"^\s{4}(?:__version__|version)\s*=\s*[\"']([^\"']+)[\"']", re.MULTILINE
 )
 
-# (item kind key, repos.json key, output file)
-OUTPUTS = (
-    ("verbas", "verba_repos", "manifest.json"),
-    ("cores", "core_repos", "core_manifest.json"),
+# (item kind key, repos.json key). One output file (OUT_NAME) carries both
+# keys — see the docstring note on why a single manifest serves both UIs.
+KINDS = (
+    ("verbas", "verba_repos"),
+    ("cores", "core_repos"),
 )
+OUT_NAME = "manifest.json"
 
 
 class BuildError(Exception):
@@ -248,48 +253,57 @@ def build_kind(kind, repos, base):
     return collected, table_rows, errors, warnings
 
 
-def diff_summary(out_path, new_items, new_doc_header):
+def diff_summary(out_path, new_doc):
     """Human-readable change summary vs the previously written file, if any."""
+    name = os.path.basename(out_path)
     if not os.path.exists(out_path):
-        return [f"{os.path.basename(out_path)}: new file ({len(new_items)} items)"]
+        counts = ", ".join(
+            f"{len(v)} {k}" for k, v in sorted(new_doc.items()) if isinstance(v, list)
+        )
+        return [f"{name}: new file ({counts})"]
     try:
         with open(out_path, "r", encoding="utf-8") as f:
             old = json.load(f)
-        old_items = old.get("verbas") or old.get("cores") or []
-        old_by_id = {it["id"]: it for it in old_items if isinstance(it, dict)}
     except (OSError, json.JSONDecodeError):
-        return [f"{os.path.basename(out_path)}: previous file unreadable; full rewrite"]
-    new_by_id = {it["id"]: it for it in new_items}
+        return [f"{name}: previous file unreadable; full rewrite"]
     lines = []
-    item_key = "verbas" if "verbas" in old else "cores"
-    header = {k: v for k, v in old.items() if k != item_key}
-    if header != new_doc_header:
+    header = {k: v for k, v in old.items() if not isinstance(v, list)}
+    new_header = {k: v for k, v in new_doc.items() if not isinstance(v, list)}
+    if header != new_header:
         lines.append(
             "  header changed: "
             + ", ".join(
-                f"{k}: {header.get(k)!r} -> {new_doc_header[k]!r}"
-                for k in sorted(set(header) | set(new_doc_header))
-                if header.get(k) != new_doc_header.get(k)
+                f"{k}: {header.get(k)!r} -> {new_header[k]!r}"
+                for k in sorted(set(header) | set(new_header))
+                if header.get(k) != new_header.get(k)
             )
         )
-    added = sorted(set(new_by_id) - set(old_by_id))
-    removed = sorted(set(old_by_id) - set(new_by_id))
-    for iid in sorted(set(new_by_id) & set(old_by_id)):
-        if old_by_id[iid] != new_by_id[iid]:
-            changed = [
-                k
-                for k in sorted(set(old_by_id[iid]) | set(new_by_id[iid]))
-                if old_by_id[iid].get(k) != new_by_id[iid].get(k)
-            ]
-            lines.append(f"  changed {iid}: {', '.join(changed)}")
-    if added:
-        lines.append(f"  added: {', '.join(added)}")
-    if removed:
-        lines.append(f"  removed: {', '.join(removed)}")
+    for kind in ("verbas", "cores"):
+        old_by_id = {it["id"]: it for it in (old.get(kind) or []) if isinstance(it, dict)}
+        new_by_id = {it["id"]: it for it in (new_doc.get(kind) or [])}
+        if not old_by_id and not new_by_id:
+            continue
+        kind_lines = []
+        for iid in sorted(set(new_by_id) & set(old_by_id)):
+            if old_by_id[iid] != new_by_id[iid]:
+                changed = [
+                    k
+                    for k in sorted(set(old_by_id[iid]) | set(new_by_id[iid]))
+                    if old_by_id[iid].get(k) != new_by_id[iid].get(k)
+                ]
+                kind_lines.append(f"    changed {iid}: {', '.join(changed)}")
+        added = sorted(set(new_by_id) - set(old_by_id))
+        removed = sorted(set(old_by_id) - set(new_by_id))
+        if added:
+            kind_lines.append(f"    added: {', '.join(added)}")
+        if removed:
+            kind_lines.append(f"    removed: {', '.join(removed)}")
+        if kind_lines:
+            lines.append(f"  [{kind}]")
+            lines.extend(kind_lines)
     if not lines:
         lines.append("  no changes")
-    header = f"{os.path.basename(out_path)}:"
-    return [header] + lines
+    return [name + ":"] + lines
 
 
 def main(argv=None):
@@ -322,10 +336,10 @@ def main(argv=None):
 
     all_errors = []
     all_warnings = []
-    outputs = []  # (kind, out_name, items)
+    by_kind = {}
     table_rows = []
 
-    for kind, key, out_name in OUTPUTS:
+    for kind, key in KINDS:
         repos = cfg.get(key) or []
         if not repos:
             continue
@@ -336,19 +350,20 @@ def main(argv=None):
             return 1
         all_errors.extend(errors)
         all_warnings.extend(warnings)
-        table_rows.extend(rows)
+        table_rows.extend((kind, *row) for row in rows)
         items = [it for _, it in collected]
         items.sort(key=lambda it: (it.get("name") or "", it.get("id") or ""))
-        outputs.append((kind, out_name, items))
+        by_kind[kind] = items
 
     for w in all_warnings:
         print(f"WARNING: {w}")
 
     if args.check_only:
-        print(f"\n{'ID':32} {'SOURCE':42} {'VERSION':10} SHA")
-        for iid, label, version, status in table_rows:
-            print(f"{iid:32} {label:42} {version:10} {status}")
-        print(f"\n{len(table_rows)} items across {len(outputs)} manifest(s).")
+        print(f"\n{'KIND':6} {'ID':32} {'SOURCE':42} {'VERSION':10} SHA")
+        for kind, iid, label, version, status in table_rows:
+            print(f"{kind[:5]:<6} {iid:32} {label:42} {version:10} {status}")
+        counts = ", ".join(f"{len(v)} {k}" for k, v in sorted(by_kind.items()))
+        print(f"\n{len(table_rows)} items ({counts}).")
         if all_errors:
             for e in all_errors:
                 print(f"ERROR: {e}", file=sys.stderr)
@@ -359,17 +374,18 @@ def main(argv=None):
     if all_errors:
         for e in all_errors:
             print(f"ERROR: {e}", file=sys.stderr)
-        print("\nManifests were NOT written (build in memory, write only on success).")
+        print("\nManifest was NOT written (build in memory, write only on success).")
         return 1
 
-    for kind, out_name, items in outputs:
-        doc = {"schema": SCHEMA, "name": cfg.get("name") or "Tater Master Repo", kind: items}
-        out_path = os.path.join(SCRIPT_DIR, out_name)
-        for line in diff_summary(out_path, items, {k: v for k, v in doc.items() if k != kind}):
-            print(line)
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.write(json.dumps(doc, indent=2) + "\n")
-    print(f"\nWrote {len(outputs)} manifest(s). {len(table_rows)} items total.")
+    doc = {"schema": SCHEMA, "name": cfg.get("name") or "Tater Master Repo"}
+    for kind, _key in KINDS:
+        doc[kind] = by_kind.get(kind, [])
+    out_path = os.path.join(SCRIPT_DIR, OUT_NAME)
+    for line in diff_summary(out_path, doc):
+        print(line)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(json.dumps(doc, indent=2) + "\n")
+    print(f"\nWrote {OUT_NAME} ({len(table_rows)} items total).")
     return 0
 
 
