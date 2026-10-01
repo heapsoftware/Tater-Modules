@@ -184,6 +184,9 @@ Then commit + push (the owner's rule: explicit yes per push). **Shortcut:** if t
 source repo is already pushed, you can push just the `repos.json` change and let the
 auto rollup (`.github/workflows/rollup.yml`, every 30 min) generate the manifest.
 
+Either way, once pushed the change is automatically cut as a tagged GitHub release of
+the master (see the README's *Releases* section).
+
 ## Part 3 — Tater side
 
 - Nothing to do per new verba repo — the item appears in the shop on the next view

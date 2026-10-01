@@ -1,0 +1,74 @@
+name: release
+
+# Cuts a GitHub release whenever the index data (repos.json / manifest.json)
+# actually changes. Runs on the completion of the rollup workflow — not on
+# push — so the regenerated manifest is final before the tag-vs-HEAD diff:
+# one logical change yields exactly one release even when rollup added a bot
+# commit on top of the user's push.
+#
+# Versioning (vMAJOR.MINOR.REVISION): automation bumps the REVISION only and
+# derives the next version from the newest existing v* tag. MINOR moves only
+# via a manual release (gh release create v1.1.0), which then becomes the new
+# base. Pushes that leave both data files untouched produce no release.
+
+on:
+  workflow_run:
+    workflows: ["rollup"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide whether to release, compute version and notes
+        id: decide
+        run: |
+          set -e
+          prev="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
+          if [ -z "$prev" ]; then
+            echo "No release tags yet; cutting the first release."
+            python3 tools/release_notes.py - HEAD notes.md
+            echo "version=v1.0.0" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$(git diff --name-only "$prev" HEAD -- repos.json manifest.json)" ]; then
+            if ! printf '%s' "$prev" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "::error::Latest tag '$prev' is not vX.Y.Z; cannot compute the next version."
+              exit 1
+            fi
+            python3 tools/release_notes.py "$prev" HEAD notes.md
+            ver="${prev#v}"
+            major="${ver%%.*}"
+            rest="${ver#*.}"
+            minor="${rest%%.*}"
+            rev="${rest#*.}"
+            echo "version=v${major}.${minor}.$((rev + 1))" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "repos.json/manifest.json unchanged since $prev; no release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create the release
+        if: steps.decide.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.decide.outputs.version }}" \
+            --title "${{ steps.decide.outputs.version }}" \
+            --notes-file notes.md

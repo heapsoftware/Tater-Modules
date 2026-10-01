@@ -11,8 +11,9 @@ see, install, and update every item from all source repos.
   merged. One entry per source repo. The optional top-level `portals` list (default `[]`)
   is copied verbatim into the generated manifest.
 - `build_manifest.py` — the merge/verify script (pure stdlib Python 3).
+- `tools/release_notes.py` — writes the auto-release notes (pure stdlib Python 3).
 
-This repo never contains .py files. Each manifest item's `entry` is an absolute raw URL
+No plugin code lives in this repo. Each manifest item's `entry` is an absolute raw URL
 pointing at the file in its own source repo; Tater downloads straight from there.
 
 ## The URL to paste into Tater
@@ -107,6 +108,24 @@ jobs:
 
 If you'd rather not manage a PAT, skip this — the 30-minute schedule already keeps the
 master current within half an hour of any source release.
+
+## Releases (automatic)
+
+Every push that actually changes `repos.json` or `manifest.json` is cut as a GitHub
+release by `.github/workflows/release.yml`, which runs right after the auto rollup
+finishes (so a regenerated manifest is included before the version is picked):
+
+- Versions are `vMAJOR.MINOR.REVISION`. Automation bumps the **revision** only —
+  `v1.0.0 → v1.0.1` — for any index change, including adding or removing a source repo
+  or manifest item.
+- **MINOR is manual.** When something major happens, cut it yourself:
+  `gh release create v1.1.0 --title "v1.1.0" --notes "…"`. The workflow always computes
+  the next version from the newest `v*` tag, so a manual release becomes the new base
+  and automation continues from there.
+- Pushes that leave both data files untouched (docs, workflow tweaks) and quiet
+  scheduled rollups produce no release — no data change, no release.
+- Release notes list exactly which items and source repos were added, removed, or
+  version-bumped since the previous tag.
 
 ## Local testing without pushing
 
