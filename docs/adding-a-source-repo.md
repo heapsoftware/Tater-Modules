@@ -182,7 +182,8 @@ git diff                      # should be ONLY the new item (or version/sha bump
 
 Then commit + push (the owner's rule: explicit yes per push). **Shortcut:** if the
 source repo is already pushed, you can push just the `repos.json` change and let the
-auto rollup (`.github/workflows/rollup.yml`, every 30 min) generate the manifest.
+auto rollup (`.github/workflows/rollup.yml`, dispatched automatically within
+~15 min) generate the manifest.
 
 Either way, once pushed the change is automatically cut as a tagged GitHub release of
 the master (see the README's *Releases* section).

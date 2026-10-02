@@ -65,7 +65,7 @@ The short version:
 2. **This repo:** one entry in `verba_repos` / `core_repos` of `repos.json`.
 3. `python3 build_manifest.py --check-only` → full build → review the `git diff`
    (only the new item) → commit + push. Or push just `repos.json` and let the auto
-   rollup generate the manifest within 30 min.
+   rollup generate the manifest within ~15 min.
 4. **Tater side:** nothing for verbas; first core ever → paste the master URL on the
    Cores page too.
 
@@ -77,13 +77,14 @@ from the master), push. Copies already installed on Tater devices stay installed
 `.github/workflows/rollup.yml` (pushed with this repo) runs the exact step-2 flow —
 `build_manifest.py --check-only`, full build, commit, push — automatically:
 
-- **Every 30 minutes** (scheduled) and **on demand** (Actions tab → *rollup* → Run
-  workflow). No secrets needed: the workflow token can write to this repo only.
+- **On source change** — dispatched automatically (≤15 min lag) — plus **on push
+  to `main`** (e.g. a `repos.json` change) and **on demand** (Actions tab → *rollup*
+  → Run workflow). No secrets needed: the workflow token can write to this repo only.
 - It retries a failed build up to 6× (60 s apart) because the raw CDN lags source pushes
   by up to ~5 min; a source repo mid-release also fails checks and resolves on retry.
 - It commits **only when a manifest actually changed**, so quiet runs cost nothing.
 
-**Optional — instant updates instead of ≤30 min:** add this to each source repo
+**Optional — push-triggered dispatch, no server dependency:** add this to each source repo
 (`.github/workflows/update-master.yml`). `repository_dispatch` crossing repos needs a
 token, so create one fine-grained PAT (permission: *Actions: read/write* on
 `heapsoftware/Tater-Modules` only), store it as secret `MASTER_DISPATCH_TOKEN` in **each**
@@ -106,8 +107,8 @@ jobs:
             -d '{"event_type": "rollup"}'
 ```
 
-If you'd rather not manage a PAT, skip this — the 30-minute schedule already keeps the
-master current within half an hour of any source release.
+If you'd rather not manage a PAT, skip this — the automatic dispatcher keeps the
+master current within ~15 min of any source release.
 
 ## Releases (automatic)
 
@@ -123,7 +124,7 @@ finishes (so a regenerated manifest is included before the version is picked):
   the next version from the newest `v*` tag, so a manual release becomes the new base
   and automation continues from there.
 - Pushes that leave both data files untouched (docs, workflow tweaks) and quiet
-  scheduled rollups produce no release — no data change, no release.
+  rollups produce no release — no data change, no release.
 - Release notes list exactly which items and source repos were added, removed, or
   version-bumped since the previous tag.
 
