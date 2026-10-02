@@ -28,7 +28,7 @@
     {
       "id": "on_demand_briefing",
       "name": "On Demand Briefing",
-      "version": "0.4.3",
+      "version": "0.4.5",
       "min_tater_version": "99",
       "description": "Spoken briefings on demand with configurable sections: time, weather, news, UniFi Protect camera activity, and BLE presence. Includes Morning and Welcome Home briefings, configurable briefing definitions, and optional background audio with ducked TTS announcements.",
       "portals": [
@@ -50,7 +50,7 @@
         "unifi protect"
       ],
       "entry": "https://raw.githubusercontent.com/heapsoftware/Tater-On-Demand-Briefing/main/verba/on_demand_briefing.py",
-      "sha256": "07390ee1dd09ac4d7c45df12988ee4fc81fb75413eec8763bc3b84229718df68"
+      "sha256": "dd944757f45e3ab2c24b25a4a9a7cca50668a2c6d425fbb8e943910cafd35806"
     }
   ],
   "cores": [
