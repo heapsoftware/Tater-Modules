@@ -15,6 +15,12 @@
       "repo": "Tater-HA-Lists",
       "branch": "main",
       "manifest": "manifest.json"
+    },
+    {
+      "owner": "heapsoftware",
+      "repo": "tater-roku-tv",
+      "branch": "main",
+      "manifest": "manifest.json"
     }
   ],
   "core_repos": [

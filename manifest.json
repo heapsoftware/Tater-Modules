@@ -51,6 +51,19 @@
       ],
       "entry": "https://raw.githubusercontent.com/heapsoftware/Tater-On-Demand-Briefing/main/verba/on_demand_briefing.py",
       "sha256": "0e99bbc5cf5cffbcc5d4c1f0f838d40c2a25f06f2174d150a47aed6b5b83cf08"
+    },
+    {
+      "id": "roku_tv",
+      "entry": "https://raw.githubusercontent.com/heapsoftware/tater-roku-tv/main/verba/roku_tv.py",
+      "name": "Roku TV",
+      "description": "Control Roku TVs over the network (playback, volume, mute, HDMI input, power, navigation) and launch YouTube. Each TV profile links to a satellite so a request only reaches that TV.",
+      "version": "1.0.1",
+      "portals": [
+        "webui",
+        "discord",
+        "voice_core"
+      ],
+      "sha256": "cd2f2cb4297a00f2db7ce89ca7894087da3e41ff0c6626f08e8902a522ac5ebc"
     }
   ],
   "cores": [
