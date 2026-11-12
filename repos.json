@@ -29,12 +29,6 @@
       "repo": "Tater-Personal-Music-Core",
       "branch": "main",
       "manifest": "core_manifest.json"
-    },
-    {
-      "owner": "heapsoftware",
-      "repo": "Tater-Jarvis-Screen",
-      "branch": "main",
-      "manifest": "core_manifest.json"
     }
   ]
 }
